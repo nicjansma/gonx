@@ -19,9 +19,13 @@ type Parser struct {
 	Regexp *regexp.Regexp
 }
 
+func NewParser(format string) *Parser {
+	return NewParserWithOptional(format, false)
+}
+
 // NewParser returns a new Parser, use given log format to create its internal
 // strings parsing regexp.
-func NewParser(format string) *Parser {
+func NewParserWithOptional(format string, allOptional bool) *Parser {
 	// First split up multiple concatenated fields with placeholder
 	placeholder := " _PLACEHOLDER___ "
 	preparedFormat := format
@@ -32,10 +36,16 @@ func NewParser(format string) *Parser {
 		)
 	}
 
+	var replacedStrings = "(?P<$1>[^$3]*)$2"
+	if allOptional {
+		// all fields are optional
+		replacedStrings = "(?P<$1>[^$3]*)?$2?"
+	}
+
 	// Second replace each fileds to regexp grouping
 	quotedFormat := regexp.QuoteMeta(preparedFormat + " ")
 	re := regexp.MustCompile(`\\\$([A-Za-z0-9_]+)(?:\\\$[A-Za-z0-9_])*(\\?([^$\\A-Za-z0-9_]))`).ReplaceAllString(
-		quotedFormat, "(?P<$1>[^$3]*)$2")
+		quotedFormat, replacedStrings)
 
 	// Finally remove placeholder
 	re = regexp.MustCompile(fmt.Sprintf(".%s", placeholder)).ReplaceAllString(re, "")
